@@ -1,0 +1,29 @@
+[package]
+name = "confet"
+version = "0.1.0"
+edition = "2021"
+description = "GPU-rendered confetti overlay for Wayland"
+license = "MIT"
+repository = "https://github.com/zcag/confet"
+keywords = ["confetti", "wayland", "gtk4", "overlay"]
+categories = ["command-line-utilities"]
+
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/confet-{ target }.tar.gz"
+bin-dir = "confet-{ target }/{ bin }{ binary-ext }"
+pkg-fmt = "tgz"
+
+[[bin]]
+name = "confet"
+path = "src/main.rs"
+
+[dependencies]
+gtk4 = "0.9"
+gtk4-layer-shell = "0.5"
+rand = "0.8"
+cairo-rs = "0.20"
+graphene-rs = "0.20"
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+dirs = "6"
