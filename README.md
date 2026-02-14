@@ -4,34 +4,29 @@ GPU-rendered confetti overlay for Wayland.
 
 ## Demo
 
+<!-- record: confetti name=hero scale=1080 crf=18 -->
+
+<p align="center">
+  <video src=".github/assets/hero.mp4" width="600">
+</p>
+
 <!-- record: confetti -->
-<!-- record: cannon -->
 <!-- record: pop -->
-<!-- record: fireworks -->
-
-| confetti | cannon | pop | fireworks |
-|----------|--------|-----|-----------|
-| <video src=".github/assets/confetti.mp4" width="200"> | <video src=".github/assets/cannon.mp4" width="200"> | <video src=".github/assets/pop.mp4" width="200"> | <video src=".github/assets/fireworks.mp4" width="200"> |
-
 <!-- record: snow -->
 <!-- record: rain -->
 <!-- record: sparkle -->
-<!-- record: drop -->
 
-| snow | rain | sparkle | drop |
-|------|------|---------|------|
-| <video src=".github/assets/snow.mp4" width="200"> | <video src=".github/assets/rain.mp4" width="200"> | <video src=".github/assets/sparkle.mp4" width="200"> | <video src=".github/assets/drop.mp4" width="200"> |
+| confetti | pop | snow | rain | sparkle |
+|----------|-----|------|------|---------|
+| <video src=".github/assets/confetti.mp4" width="180"> | <video src=".github/assets/pop.mp4" width="180"> | <video src=".github/assets/snow.mp4" width="180"> | <video src=".github/assets/rain.mp4" width="180"> | <video src=".github/assets/sparkle.mp4" width="180"> |
 
 <!-- record: lava -->
-<!-- record: matrix -->
 <!-- record: sakura -->
-<!-- record: aurora -->
-<!-- record: gold -->
-<!-- record: balloon -->
+<!-- record: matrix -->
 
-| lava | matrix | sakura | aurora | gold | balloon |
-|------|--------|--------|--------|------|---------|
-| <video src=".github/assets/lava.mp4" width="150"> | <video src=".github/assets/matrix.mp4" width="150"> | <video src=".github/assets/sakura.mp4" width="150"> | <video src=".github/assets/aurora.mp4" width="150"> | <video src=".github/assets/gold.mp4" width="150"> | <video src=".github/assets/balloon.mp4" width="150"> |
+| lava | sakura | matrix |
+|------|--------|--------|
+| <video src=".github/assets/lava.mp4" width="240"> | <video src=".github/assets/sakura.mp4" width="240"> | <video src=".github/assets/matrix.mp4" width="240"> |
 
 ## Install
 
