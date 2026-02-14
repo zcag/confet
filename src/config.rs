@@ -1,5 +1,5 @@
 use crate::types::{AnimType, Shape, DEFAULT_COLORS, ANIM_TYPE_NAMES, BUILTIN_PROFILE_NAMES};
-use clap::Parser;
+use clap::{CommandFactory, FromArgMatches, Parser};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::OnceLock;
@@ -59,6 +59,24 @@ pub struct Cli {
     /// Create default config file at ~/.config/confet/config.toml
     #[arg(long)]
     pub init: bool,
+}
+
+pub fn parse_cli(file: &FileConfig) -> Cli {
+    let mut profiles: Vec<&str> = BUILTIN_PROFILE_NAMES.to_vec();
+    for k in file.profiles.keys() {
+        if !profiles.iter().any(|&p| p == k) {
+            profiles.push(k);
+        }
+    }
+    let help = format!(
+        "Types: {}\nProfiles: {}",
+        ANIM_TYPE_NAMES.join(", "),
+        profiles.join(", "),
+    );
+    let matches = Cli::command()
+        .after_help(help)
+        .get_matches();
+    Cli::from_arg_matches(&matches).unwrap()
 }
 
 // ── Config structs ───────────────────────────────────────────────

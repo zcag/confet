@@ -4,10 +4,10 @@ GPU-rendered confetti overlay for Linux (Wayland) and macOS.
 
 ## Demo
 
-<!-- record: confetti name=hero scale=1080 crf=18 -->
+<!-- record: confetti name=hero scale=1080 crf=18 fps=20 -->
 
 <p align="center">
-  <video src="https://github.com/zcag/confet/raw/main/.github/assets/hero.mp4" autoplay muted loop playsinline width="600"></video>
+  <img src="https://github.com/zcag/confet/raw/refs/heads/master/.github/assets/hero.gif" width="600">
 </p>
 
 <!-- record: confetti -->
@@ -18,7 +18,7 @@ GPU-rendered confetti overlay for Linux (Wayland) and macOS.
 
 | confetti | pop | snow | rain | sparkle |
 |----------|-----|------|------|---------|
-| <video src="https://github.com/zcag/confet/raw/main/.github/assets/confetti.mp4" autoplay muted loop playsinline width="180"></video> | <video src="https://github.com/zcag/confet/raw/main/.github/assets/pop.mp4" autoplay muted loop playsinline width="180"></video> | <video src="https://github.com/zcag/confet/raw/main/.github/assets/snow.mp4" autoplay muted loop playsinline width="180"></video> | <video src="https://github.com/zcag/confet/raw/main/.github/assets/rain.mp4" autoplay muted loop playsinline width="180"></video> | <video src="https://github.com/zcag/confet/raw/main/.github/assets/sparkle.mp4" autoplay muted loop playsinline width="180"></video> |
+| ![confetti](https://github.com/zcag/confet/raw/refs/heads/master/.github/assets/confetti.gif) | ![pop](https://github.com/zcag/confet/raw/refs/heads/master/.github/assets/pop.gif) | ![snow](https://github.com/zcag/confet/raw/refs/heads/master/.github/assets/snow.gif) | ![rain](https://github.com/zcag/confet/raw/refs/heads/master/.github/assets/rain.gif) | ![sparkle](https://github.com/zcag/confet/raw/refs/heads/master/.github/assets/sparkle.gif) |
 
 <!-- record: lava -->
 <!-- record: sakura -->
@@ -26,7 +26,7 @@ GPU-rendered confetti overlay for Linux (Wayland) and macOS.
 
 | lava | sakura | matrix |
 |------|--------|--------|
-| <video src="https://github.com/zcag/confet/raw/main/.github/assets/lava.mp4" autoplay muted loop playsinline width="240"></video> | <video src="https://github.com/zcag/confet/raw/main/.github/assets/sakura.mp4" autoplay muted loop playsinline width="240"></video> | <video src="https://github.com/zcag/confet/raw/main/.github/assets/matrix.mp4" autoplay muted loop playsinline width="240"></video> |
+| ![lava](https://github.com/zcag/confet/raw/refs/heads/master/.github/assets/lava.gif) | ![sakura](https://github.com/zcag/confet/raw/refs/heads/master/.github/assets/sakura.gif) | ![matrix](https://github.com/zcag/confet/raw/refs/heads/master/.github/assets/matrix.gif) |
 
 ## Install
 

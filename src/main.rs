@@ -5,18 +5,17 @@ mod platform;
 mod types;
 
 use canvas::Canvas;
-use clap::Parser;
-use config::{Cli, Settings};
+use config::Settings;
 use gtk4::prelude::*;
 use gtk4::gdk;
 
 fn main() {
-    let cli = Cli::parse();
+    let file = config::load_file_config();
+    let cli = config::parse_cli(&file);
     if cli.init {
         config::init_config();
         return;
     }
-    let file = config::load_file_config();
     config::set_settings(Settings::resolve(cli, file));
 
     let app = gtk4::Application::builder()
