@@ -1,13 +1,13 @@
 # confet
 
-GPU-rendered confetti overlay for Wayland.
+GPU-rendered confetti overlay for Linux (Wayland) and macOS.
 
 ## Demo
 
 <!-- record: confetti name=hero scale=1080 crf=18 -->
 
 <p align="center">
-  <video src=".github/assets/hero.mp4" width="600">
+  <video src="https://github.com/zcag/confet/raw/main/.github/assets/hero.mp4" autoplay muted loop playsinline width="600"></video>
 </p>
 
 <!-- record: confetti -->
@@ -18,7 +18,7 @@ GPU-rendered confetti overlay for Wayland.
 
 | confetti | pop | snow | rain | sparkle |
 |----------|-----|------|------|---------|
-| <video src=".github/assets/confetti.mp4" width="180"> | <video src=".github/assets/pop.mp4" width="180"> | <video src=".github/assets/snow.mp4" width="180"> | <video src=".github/assets/rain.mp4" width="180"> | <video src=".github/assets/sparkle.mp4" width="180"> |
+| <video src="https://github.com/zcag/confet/raw/main/.github/assets/confetti.mp4" autoplay muted loop playsinline width="180"></video> | <video src="https://github.com/zcag/confet/raw/main/.github/assets/pop.mp4" autoplay muted loop playsinline width="180"></video> | <video src="https://github.com/zcag/confet/raw/main/.github/assets/snow.mp4" autoplay muted loop playsinline width="180"></video> | <video src="https://github.com/zcag/confet/raw/main/.github/assets/rain.mp4" autoplay muted loop playsinline width="180"></video> | <video src="https://github.com/zcag/confet/raw/main/.github/assets/sparkle.mp4" autoplay muted loop playsinline width="180"></video> |
 
 <!-- record: lava -->
 <!-- record: sakura -->
@@ -26,25 +26,39 @@ GPU-rendered confetti overlay for Wayland.
 
 | lava | sakura | matrix |
 |------|--------|--------|
-| <video src=".github/assets/lava.mp4" width="240"> | <video src=".github/assets/sakura.mp4" width="240"> | <video src=".github/assets/matrix.mp4" width="240"> |
+| <video src="https://github.com/zcag/confet/raw/main/.github/assets/lava.mp4" autoplay muted loop playsinline width="240"></video> | <video src="https://github.com/zcag/confet/raw/main/.github/assets/sakura.mp4" autoplay muted loop playsinline width="240"></video> | <video src="https://github.com/zcag/confet/raw/main/.github/assets/matrix.mp4" autoplay muted loop playsinline width="240"></video> |
 
 ## Install
 
-### cargo-binstall (prebuilt binary)
+### Linux (Wayland)
+
+Requires GTK4 and gtk4-layer-shell.
+
+```sh
+# Arch
+sudo pacman -S gtk4 gtk4-layer-shell
+
+# Ubuntu/Debian
+sudo apt install libgtk-4-dev libgtk4-layer-shell-dev
+```
+
+### macOS
+
+Requires GTK4 via Homebrew.
+
+```sh
+brew install gtk4
+```
+
+### Binary
 
 ```sh
 cargo binstall confet
-```
-
-### cargo install
-
-```sh
+# or
 cargo install confet
 ```
 
 ### From source
-
-Requires GTK4 and gtk4-layer-shell development libraries.
 
 ```sh
 git clone https://github.com/zcag/confet
@@ -60,6 +74,36 @@ confet snow               # built-in type
 confet lava               # built-in profile (no config needed)
 confet -t pop -n 500      # type with overrides
 confet --init             # create config file
+```
+
+### Examples
+
+Celebrate after a build:
+```sh
+cargo build --release && confet
+make && confet gold
+```
+
+Xcode build hook:
+```sh
+xcodebuild -project MyApp.xcodeproj && confet lava
+```
+
+After a long-running command:
+```sh
+./train-model.sh; confet fireworks
+sleep 3600 && confet sakura
+```
+
+CI/deploy success notification:
+```sh
+ssh prod "deploy.sh" && confet gold
+```
+
+Git hook (`.git/hooks/post-commit`):
+```sh
+#!/bin/sh
+confet -n 300 -d 1.5
 ```
 
 ## Types

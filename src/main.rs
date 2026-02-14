@@ -1,6 +1,7 @@
 mod canvas;
 mod config;
 mod particle;
+mod platform;
 mod types;
 
 use canvas::Canvas;
@@ -8,7 +9,6 @@ use clap::Parser;
 use config::{Cli, Settings};
 use gtk4::prelude::*;
 use gtk4::gdk;
-use gtk4_layer_shell::LayerShell;
 
 fn main() {
     let cli = Cli::parse();
@@ -27,17 +27,7 @@ fn main() {
     app.connect_activate(|app| {
         let win = gtk4::Window::builder().application(app).build();
 
-        win.init_layer_shell();
-        win.set_layer(gtk4_layer_shell::Layer::Overlay);
-        for edge in [
-            gtk4_layer_shell::Edge::Top, gtk4_layer_shell::Edge::Bottom,
-            gtk4_layer_shell::Edge::Left, gtk4_layer_shell::Edge::Right,
-        ] {
-            win.set_anchor(edge, true);
-        }
-        win.set_exclusive_zone(-1);
-        win.set_keyboard_mode(gtk4_layer_shell::KeyboardMode::None);
-        win.set_namespace(Some("confetti"));
+        platform::setup_window(&win);
 
         let css = gtk4::CssProvider::new();
         css.load_from_data(
@@ -51,15 +41,6 @@ fn main() {
         canvas.set_hexpand(true);
         canvas.set_vexpand(true);
         win.set_child(Some(&canvas));
-
-        win.connect_realize(|w| {
-            if let Some(surface) = w.surface() {
-                let region = cairo::Region::create_rectangle(
-                    &cairo::RectangleInt::new(0, 0, 0, 0),
-                );
-                surface.set_input_region(&region);
-            }
-        });
 
         win.present();
 
