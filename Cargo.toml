@@ -1,12 +1,13 @@
 [package]
 name = "confet"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "GPU-rendered confetti overlay"
 license = "MIT"
 repository = "https://github.com/zcag/confet"
 keywords = ["confetti", "gtk4", "overlay", "particles"]
 categories = ["command-line-utilities"]
+exclude = [".github/"]
 
 [package.metadata.binstall]
 pkg-url = "{ repo }/releases/download/v{ version }/confet-{ target }.tar.gz"
