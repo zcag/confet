@@ -1,20 +1,40 @@
 use gtk4::prelude::*;
 use gtk4::glib;
+use objc2::encode::{Encode, Encoding};
 use objc2::runtime::{AnyClass, AnyObject, Bool};
 use objc2::{msg_send, msg_send_id};
 use objc2::rc::Retained;
+
+// msg_send! marshals arguments and return values through objc2's Encode, so any
+// struct crossing that boundary needs an encoding that matches the Objective-C
+// type. Declaring the #[repr(C)] layout alone is not enough -- without these
+// impls `screen.frame` and `setFrame:display:` do not compile. The encodings
+// mirror objc2-foundation's own NSPoint/NSSize/NSRect, which is why no extra
+// dependency is needed.
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 struct CGPoint { x: f64, y: f64 }
 
+unsafe impl Encode for CGPoint {
+    const ENCODING: Encoding = Encoding::Struct("CGPoint", &[f64::ENCODING, f64::ENCODING]);
+}
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 struct CGSize { width: f64, height: f64 }
 
+unsafe impl Encode for CGSize {
+    const ENCODING: Encoding = Encoding::Struct("CGSize", &[f64::ENCODING, f64::ENCODING]);
+}
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 struct CGRect { origin: CGPoint, size: CGSize }
+
+unsafe impl Encode for CGRect {
+    const ENCODING: Encoding = Encoding::Struct("CGRect", &[CGPoint::ENCODING, CGSize::ENCODING]);
+}
 
 pub fn setup_window(win: &gtk4::Window) {
     win.set_decorated(false);
