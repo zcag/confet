@@ -19,7 +19,7 @@ pub fn set_settings(s: Settings) {
 // ── CLI ──────────────────────────────────────────────────────────
 
 #[derive(Parser)]
-#[command(name = "confet", about = "GPU-rendered confetti overlay for Wayland")]
+#[command(name = "confet", about = "GPU-rendered confetti overlay for Linux (Wayland) and macOS")]
 pub struct Cli {
     /// Profile name or animation type
     pub profile: Option<String>,

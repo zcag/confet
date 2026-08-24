@@ -1,6 +1,6 @@
 [package]
 name = "confet"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 description = "GPU-rendered confetti overlay"
 license = "MIT"
