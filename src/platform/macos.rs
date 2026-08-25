@@ -39,16 +39,17 @@ unsafe impl Encode for CGRect {
 pub fn setup_window(win: &gtk4::Window) {
     win.set_decorated(false);
 
-    // Do this before anything is shown: NSApplicationActivationPolicyAccessory
-    // (1) keeps confet out of the Dock and out of the activation order, so
-    // firing it after a build doesn't pull focus off whatever you're typing in.
-    // The default policy is Regular, which makes the overlay the front app.
+    // Do this before anything is shown: NSApplicationActivationPolicyProhibited
+    // (2) means confet can't become the active app at all, so firing it after a
+    // build doesn't pull focus off whatever you're typing in. Accessory (1) is
+    // not enough here -- GTK's macOS backend activates the app explicitly, and
+    // an accessory app is still allowed to be activated that way.
     unsafe {
         let app: Retained<AnyObject> = msg_send_id![
             AnyClass::get("NSApplication").unwrap(),
             sharedApplication
         ];
-        let _: Bool = msg_send![&*app, setActivationPolicy: 1_isize];
+        let _: Bool = msg_send![&*app, setActivationPolicy: 2_isize];
     }
 
     // Configure the underlying NSWindow after GTK realizes it
