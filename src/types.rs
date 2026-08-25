@@ -71,6 +71,16 @@ impl AnimType {
         }
     }
 
+    /// The sound a bare `--sound` resolves to. Types with no burst moment
+    /// (snow, rain, sparkle) want an ambient bed rather than a one-shot, and
+    /// nothing bundled fits that yet, so they stay silent.
+    pub fn default_sound(self) -> Option<&'static str> {
+        match self {
+            Self::Snow | Self::Rain | Self::Sparkle => None,
+            _ => Some("cork"),
+        }
+    }
+
     pub fn default_colors(self) -> &'static [[f32; 3]] {
         match self {
             Self::Snow => &[

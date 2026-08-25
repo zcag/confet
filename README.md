@@ -139,6 +139,35 @@ These work out of the box — no config file needed.
 | `gold` | cannon | Golden circles from center |
 | `balloon` | drop | Rainbow drops from above |
 
+## Sound
+
+Off by default. `--sound` on its own plays the sound that fits the animation
+type; a name or a path to a `.wav` overrides it.
+
+```sh
+confet --sound              # the type's own sound
+confet --sound cork         # a built-in by name
+confet --sound ~/pop.wav    # your own file
+confet gold --mute          # force silence over a config that sets one
+```
+
+Built-in: `cork`. Bundled sounds are CC0 — see
+[assets/sounds/CREDITS.md](assets/sounds/CREDITS.md).
+
+Playback shells out to whatever the platform already has (`afplay` on macOS;
+`pw-play`, `paplay`, `aplay` or `ffplay` on Linux), so confet needs no audio
+library and no extra build dependencies. If none of them are installed, the
+animation runs silently.
+
+To make it always-on, set `sound` in the config — top level or per profile:
+
+```toml
+sound = "auto"          # every run plays its type's sound
+
+[profiles.gold]
+sound = "cork"
+```
+
 ## Config
 
 Generate a default config with `confet --init` (creates `~/.config/confet/config.toml`):
@@ -182,6 +211,8 @@ Config profiles override built-in profiles with the same name.
 | `--fade` | Fade-out duration (secs) | varies by type |
 | `-c, --colors` | Hex colors, comma-separated | varies by type |
 | `-b, --background` | Animate in the background, return immediately | off |
+| `--sound [NAME\|PATH]` | Play a sound; bare = the type's own | off |
+| `--mute` | Force silence, overriding the config | — |
 | `--init` | Create default config file | — |
 
 ## License

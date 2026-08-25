@@ -2,6 +2,7 @@ mod canvas;
 mod config;
 mod particle;
 mod platform;
+mod sound;
 mod types;
 
 use canvas::Canvas;
@@ -63,6 +64,10 @@ fn main() {
         win.set_child(Some(&canvas));
 
         win.present();
+
+        if let Some(spec) = &config::settings().sound {
+            sound::play(spec);
+        }
 
         let display = gdk::Display::default().unwrap();
         let monitor: gdk::Monitor = display.monitors()

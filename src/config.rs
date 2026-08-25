@@ -1,3 +1,4 @@
+use crate::sound::SOUND_NAMES;
 use crate::types::{AnimType, Shape, DEFAULT_COLORS, ANIM_TYPE_NAMES, BUILTIN_PROFILE_NAMES};
 use clap::{CommandFactory, FromArgMatches, Parser};
 use serde::Deserialize;
@@ -56,6 +57,12 @@ pub struct Cli {
     /// Comma-separated hex colors (e.g. '#ff0000,#00ff00,#0000ff')
     #[arg(short, long, value_delimiter = ',')]
     pub colors: Option<Vec<String>>,
+    /// Play a sound: a built-in name, a path to a .wav, or bare for the type default
+    #[arg(long, num_args = 0..=1, default_missing_value = "auto", value_name = "NAME|PATH")]
+    pub sound: Option<String>,
+    /// Never play a sound, overriding the config
+    #[arg(long)]
+    pub mute: bool,
     /// Run in the background and return immediately
     #[arg(short = 'b', long, alias = "detach")]
     pub background: bool,
@@ -72,9 +79,10 @@ pub fn parse_cli(file: &FileConfig) -> Cli {
         }
     }
     let help = format!(
-        "Types: {}\nProfiles: {}",
+        "Types: {}\nProfiles: {}\nSounds: {}",
         ANIM_TYPE_NAMES.join(", "),
         profiles.join(", "),
+        SOUND_NAMES.join(", "),
     );
     let matches = Cli::command()
         .after_help(help)
@@ -98,6 +106,7 @@ pub struct ProfileConfig {
     pub spread: Option<f64>,
     pub fade: Option<f64>,
     pub colors: Option<Vec<String>>,
+    pub sound: Option<String>,
 }
 
 #[derive(Deserialize, Default)]
@@ -114,6 +123,7 @@ pub struct FileConfig {
     pub spread: Option<f64>,
     pub fade: Option<f64>,
     pub colors: Option<Vec<String>>,
+    pub sound: Option<String>,
     #[serde(default)]
     pub profiles: HashMap<String, ProfileConfig>,
 }
@@ -130,6 +140,7 @@ pub struct Settings {
     pub spread: f64,
     pub fade: f64,
     pub colors: Vec<[f32; 3]>,
+    pub sound: Option<String>,
 }
 
 // ── Color parsing ────────────────────────────────────────────────
@@ -213,6 +224,10 @@ speed_max = 2500
 spread = 150
 fade = 0.4
 colors = ["#ff2d87", "#2d8cff", "#2dff6d", "#ffd02d", "#a12dff", "#ff6b2d", "#2dfff6", "#ff2dca"]
+
+# Play a sound with every run: "auto" (the type's own), a built-in name, or a
+# path to a .wav. Omit it and confet stays silent unless you pass --sound.
+# sound = "auto"
 
 # Available types: confetti, cannon, pop, fireworks, snow, rain, sparkle, drop
 # Available shapes: rect, circle, mixed
@@ -354,6 +369,22 @@ impl Settings {
             anim_type.default_colors().to_vec()
         };
 
+        // Silent unless asked for: confet is installed for the visuals, and an
+        // upgrade that starts making noise on an existing keybind is a rude
+        // surprise. "auto" picks the type's own sound, "none" forces silence.
+        let sound = if cli.mute {
+            None
+        } else {
+            cli.sound.clone()
+                .or_else(|| profile.sound.clone())
+                .or_else(|| file.sound.clone())
+                .and_then(|s| match s.as_str() {
+                    "auto" => anim_type.default_sound().map(String::from),
+                    "none" => None,
+                    _ => Some(s),
+                })
+        };
+
         Self {
             anim_type, shape,
             particles: pick!(cli.particles, profile.particles, file.particles, dp),
@@ -364,7 +395,7 @@ impl Settings {
             speed_max: pick!(cli.speed_max, profile.speed_max, file.speed_max, dsx),
             spread:    pick!(cli.spread,    profile.spread,    file.spread,    dsp),
             fade:      pick!(cli.fade,      profile.fade,      file.fade,      df),
-            colors,
+            colors, sound,
         }
     }
 }
