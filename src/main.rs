@@ -2,6 +2,7 @@ mod canvas;
 mod config;
 mod particle;
 mod platform;
+mod glcanvas;
 mod sound;
 mod types;
 
@@ -9,6 +10,7 @@ use canvas::Canvas;
 use config::Settings;
 use gtk4::prelude::*;
 use gtk4::gdk;
+use gtk4::glib;
 use std::process::{Command, Stdio};
 
 const BACKGROUND_GUARD: &str = "CONFET_BACKGROUND";
@@ -62,9 +64,15 @@ fn main() {
     app.connect_activate(|app| {
         let win = gtk4::Window::builder().application(app).build();
 
-        platform::setup_window(&win);
+        let plain = std::env::var_os("CONFET_PLAIN").is_some();
+        if plain {
+            win.set_default_size(700, 500);
+        } else {
+            platform::setup_window(&win);
+        }
 
         let css = gtk4::CssProvider::new();
+        if plain { /* keep the normal opaque window background */ }
         css.load_from_data(
             "window.background, window.background * { background: unset; background-color: rgba(0,0,0,0); }",
         );
@@ -72,10 +80,9 @@ fn main() {
             &gdk::Display::default().unwrap(), &css, gtk4::STYLE_PROVIDER_PRIORITY_USER,
         );
 
-        let canvas = Canvas::new();
-        canvas.set_hexpand(true);
-        canvas.set_vexpand(true);
-        win.set_child(Some(&canvas));
+        let glspike = glcanvas::build();
+        win.set_child(Some(&glspike));
+        let _ = &Canvas::new;
 
         win.present();
 
@@ -87,7 +94,8 @@ fn main() {
         let monitor: gdk::Monitor = display.monitors()
             .item(0).unwrap().downcast().unwrap();
         let geom = monitor.geometry();
-        canvas.start(geom.width() as f64, geom.height() as f64);
+        let _ = geom;
+        glib::timeout_add_seconds_local_once(3, || std::process::exit(0));
     });
 
     app.run_with_args::<&str>(&[]);
