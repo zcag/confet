@@ -70,9 +70,9 @@ pub struct Cli {
     #[arg(short = 'w', long)]
     pub wait: bool,
     /// Print the fully resolved settings, and where each came from, then exit
-    #[arg(long)]
+    #[arg(short = 'i', long)]
     pub info: bool,
-    /// Create default config file at ~/.config/confet/config.toml
+    /// Create the default config file (--info prints its path)
     #[arg(long)]
     pub init: bool,
 }
