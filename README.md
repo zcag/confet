@@ -84,6 +84,11 @@ cargo build --release && confet
 make && confet gold
 ```
 
+Don't wait for the animation — `-b` (alias `--detach`) returns immediately:
+```sh
+make && confet -b gold && ./run-tests.sh
+```
+
 Xcode build hook:
 ```sh
 xcodebuild -project MyApp.xcodeproj && confet lava
@@ -176,6 +181,7 @@ Config profiles override built-in profiles with the same name.
 | `--spread` | Horizontal spread | varies by type |
 | `--fade` | Fade-out duration (secs) | varies by type |
 | `-c, --colors` | Hex colors, comma-separated | varies by type |
+| `-b, --background` | Animate in the background, return immediately | off |
 | `--init` | Create default config file | — |
 
 ## License

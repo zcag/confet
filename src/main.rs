@@ -8,12 +8,33 @@ use canvas::Canvas;
 use config::Settings;
 use gtk4::prelude::*;
 use gtk4::gdk;
+use std::process::{Command, Stdio};
+
+const BACKGROUND_GUARD: &str = "CONFET_BACKGROUND";
+
+/// Re-exec self with stdio detached, so the calling shell returns right away.
+/// This spawns (fork+exec) instead of a bare fork because GTK is Cocoa-backed
+/// on macOS, where forking without exec is not safe. Returns false if the
+/// respawn didn't happen, in which case we just animate in the foreground.
+fn respawn_in_background() -> bool {
+    if std::env::var_os(BACKGROUND_GUARD).is_some() { return false; }
+    let Ok(exe) = std::env::current_exe() else { return false };
+    Command::new(exe)
+        .args(std::env::args_os().skip(1))
+        .env(BACKGROUND_GUARD, "1")
+        .stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null())
+        .spawn()
+        .is_ok()
+}
 
 fn main() {
     let file = config::load_file_config();
     let cli = config::parse_cli(&file);
     if cli.init {
         config::init_config();
+        return;
+    }
+    if cli.background && respawn_in_background() {
         return;
     }
     config::set_settings(Settings::resolve(cli, file));

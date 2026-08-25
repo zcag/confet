@@ -56,6 +56,9 @@ pub struct Cli {
     /// Comma-separated hex colors (e.g. '#ff0000,#00ff00,#0000ff')
     #[arg(short, long, value_delimiter = ',')]
     pub colors: Option<Vec<String>>,
+    /// Run in the background and return immediately
+    #[arg(short = 'b', long, alias = "detach")]
+    pub background: bool,
     /// Create default config file at ~/.config/confet/config.toml
     #[arg(long)]
     pub init: bool,
