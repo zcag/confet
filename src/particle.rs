@@ -119,12 +119,15 @@ impl Particles {
         }
 
         let nc = s.colors.len();
+        // Baked at what used to need --size 1.4: the original numbers were small
+        // enough that particles read as specks rather than paper. --size is
+        // still a multiplier on top, so 1.0 is now the intended look.
         let (pw_lo, pw_hi, ph_lo, ph_hi): (f32, f32, f32, f32) = match s.anim_type {
-            AnimType::Fireworks => (3.0, 6.0, 3.0, 6.0),
-            AnimType::Snow      => (4.0, 8.0, 4.0, 8.0),
-            AnimType::Rain      => (1.5, 3.0, 15.0, 30.0),
-            AnimType::Sparkle   => (2.0, 5.0, 2.0, 5.0),
-            _                   => (5.0, 12.0, 3.0, 8.0),
+            AnimType::Fireworks => (4.2, 8.4, 4.2, 8.4),
+            AnimType::Snow      => (5.6, 11.2, 5.6, 11.2),
+            AnimType::Rain      => (2.1, 4.2, 21.0, 42.0),
+            AnimType::Sparkle   => (2.8, 7.0, 2.8, 7.0),
+            _                   => (7.0, 16.8, 4.2, 11.2),
         };
         let z = s.size as f32;
         let (pw_lo, pw_hi, ph_lo, ph_hi) = (pw_lo * z, pw_hi * z, ph_lo * z, ph_hi * z);
