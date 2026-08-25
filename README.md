@@ -68,6 +68,9 @@ cargo build --release
 
 ## Usage
 
+confet returns immediately and animates in the background. Pass `--wait` to
+block until it finishes.
+
 ```sh
 confet                    # default confetti
 confet snow               # built-in type
@@ -84,9 +87,14 @@ cargo build --release && confet
 make && confet gold
 ```
 
-Don't wait for the animation — `-b` (alias `--detach`) returns immediately:
+confet returns as soon as the animation starts, so it never holds up a chain:
 ```sh
-make && confet -b gold && ./run-tests.sh
+make && confet gold && ./run-tests.sh
+```
+
+Use `--wait` if you need the animation to finish first — recording it, say:
+```sh
+confet --wait fireworks
 ```
 
 Xcode build hook:
@@ -210,7 +218,7 @@ Config profiles override built-in profiles with the same name.
 | `--spread` | Horizontal spread | varies by type |
 | `--fade` | Fade-out duration (secs) | varies by type |
 | `-c, --colors` | Hex colors, comma-separated | varies by type |
-| `-b, --background` | Animate in the background, return immediately | off |
+| `-w, --wait` | Block until the animation finishes | off |
 | `--sound [NAME\|PATH]` | Play a sound; bare = the type's own | off |
 | `--mute` | Force silence, overriding the config | — |
 | `--init` | Create default config file | — |

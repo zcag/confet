@@ -14,9 +14,14 @@ use std::process::{Command, Stdio};
 const BACKGROUND_GUARD: &str = "CONFET_BACKGROUND";
 
 /// Re-exec self with stdio detached, so the calling shell returns right away.
-/// This spawns (fork+exec) instead of a bare fork because GTK is Cocoa-backed
-/// on macOS, where forking without exec is not safe. Returns false if the
-/// respawn didn't happen, in which case we just animate in the foreground.
+/// This is the default: confet has no result to wait for -- it always exits 0
+/// and prints nothing, so blocking the caller protects nothing and costs them
+/// the length of the animation. `--wait` opts back in, for the rare caller
+/// that treats the animation itself as the artifact (see scripts/record-demos.sh).
+///
+/// Spawns (fork+exec) instead of a bare fork because GTK is Cocoa-backed on
+/// macOS, where forking without exec is not safe. Returns false if the respawn
+/// didn't happen, in which case we just animate in the foreground.
 fn respawn_in_background() -> bool {
     if std::env::var_os(BACKGROUND_GUARD).is_some() { return false; }
     let Ok(exe) = std::env::current_exe() else { return false };
@@ -35,7 +40,7 @@ fn main() {
         config::init_config();
         return;
     }
-    if cli.background && respawn_in_background() {
+    if !cli.wait && respawn_in_background() {
         return;
     }
     config::set_settings(Settings::resolve(cli, file));

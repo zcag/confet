@@ -72,8 +72,10 @@ for entry in "${entries[@]}"; do
     rec_pid=$!
     sleep 0.3
 
+    # --wait: confet returns immediately by default, but here the animation
+    # *is* the artifact -- the recorder is killed on the next line.
     # shellcheck disable=SC2086
-    "$CONFET" $confet_args
+    "$CONFET" --wait $confet_args
 
     kill "$rec_pid" 2>/dev/null || true
     wait "$rec_pid" 2>/dev/null || true

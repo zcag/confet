@@ -63,9 +63,9 @@ pub struct Cli {
     /// Never play a sound, overriding the config
     #[arg(long)]
     pub mute: bool,
-    /// Run in the background and return immediately
-    #[arg(short = 'b', long, alias = "detach")]
-    pub background: bool,
+    /// Block until the animation finishes instead of returning immediately
+    #[arg(short = 'w', long)]
+    pub wait: bool,
     /// Create default config file at ~/.config/confet/config.toml
     #[arg(long)]
     pub init: bool,
