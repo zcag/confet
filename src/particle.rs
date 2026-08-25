@@ -246,15 +246,22 @@ impl Particles {
             .map(|c| gdk::RGBA::new(c[0], c[1], c[2], alpha))
             .collect();
         let use_wobble = !matches!(s.anim_type, AnimType::Rain);
+        // A tumbling paper disc reads as an ellipse, not a circle -- and being
+        // asymmetric is also the only way its rotation is visible at all.
+        // Snow, fireworks and sparkle are flakes and sparks rather than paper,
+        // so their discs stay round.
+        let discs_tumble = matches!(s.anim_type,
+            AnimType::Confetti | AnimType::Cannon | AnimType::Pop | AnimType::Drop);
         for i in 0..n {
             if tf < self.delay[i] { continue; }
             // The wobble squash is what makes a particle look like paper
-            // turning edge-on, so triangles get it too.
-            let sw = if use_wobble && self.kind[i] != Shape::Circle {
-                self.wobble[i].sin().abs().max(0.15) as f32 * self.pw[i]
+            // turning edge-on, so triangles and discs get it too.
+            let wob = if use_wobble && (self.kind[i] != Shape::Circle || discs_tumble) {
+                self.wobble[i].sin().abs().max(0.15) as f32
             } else {
-                self.pw[i]
+                1.0
             };
+            let sw = wob * self.pw[i];
             if self.kind[i] == Shape::Triangle {
                 tris.push((
                     self.x[i], self.y[i], self.rot[i],
@@ -269,9 +276,11 @@ impl Particles {
             snap.rotate(self.rot[i].to_degrees() as f32);
             if self.kind[i] == Shape::Circle {
                 let sz = (self.pw[i] + self.ph[i]) / 2.0;
-                let half = sz / 2.0;
-                let rect = graphene::Rect::new(-half, -half, sz, sz);
-                let corner = graphene::Size::new(half, half);
+                let w = wob * sz;
+                // Corner radii at half the extents turn a rounded rect into an
+                // ellipse -- round when face-on, a sliver when edge-on.
+                let rect = graphene::Rect::new(-w / 2.0, -sz / 2.0, w, sz);
+                let corner = graphene::Size::new(w / 2.0, sz / 2.0);
                 snap.push_rounded_clip(&gsk::RoundedRect::new(rect, corner, corner, corner, corner));
                 snap.append_color(color, &rect);
                 snap.pop();
