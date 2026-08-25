@@ -54,6 +54,9 @@ pub struct Cli {
     /// Fade-out duration in seconds
     #[arg(long)]
     pub fade: Option<f64>,
+    /// Particle size multiplier (1 = the type's own size)
+    #[arg(long, value_name = "MULT")]
+    pub size: Option<f64>,
     /// Comma-separated hex colors (e.g. '#ff0000,#00ff00,#0000ff')
     #[arg(short, long, value_delimiter = ',')]
     pub colors: Option<Vec<String>>,
@@ -66,6 +69,9 @@ pub struct Cli {
     /// Block until the animation finishes instead of returning immediately
     #[arg(short = 'w', long)]
     pub wait: bool,
+    /// Print the fully resolved settings, and where each came from, then exit
+    #[arg(long)]
+    pub info: bool,
     /// Create default config file at ~/.config/confet/config.toml
     #[arg(long)]
     pub init: bool,
@@ -105,6 +111,7 @@ pub struct ProfileConfig {
     pub speed_max: Option<f64>,
     pub spread: Option<f64>,
     pub fade: Option<f64>,
+    pub size: Option<f64>,
     pub colors: Option<Vec<String>>,
     pub sound: Option<String>,
 }
@@ -122,6 +129,7 @@ pub struct FileConfig {
     pub speed_max: Option<f64>,
     pub spread: Option<f64>,
     pub fade: Option<f64>,
+    pub size: Option<f64>,
     pub colors: Option<Vec<String>>,
     pub sound: Option<String>,
     #[serde(default)]
@@ -129,6 +137,11 @@ pub struct FileConfig {
 }
 
 pub struct Settings {
+    pub profile: Option<String>,
+    /// (field, "cli" | "profile" | "config" | "default") -- only --info reads
+    /// this, but it is recorded during resolution so it can't drift from the
+    /// values it describes.
+    pub sources: Vec<(&'static str, &'static str)>,
     pub anim_type: AnimType,
     pub shape: Shape,
     pub particles: usize,
@@ -139,6 +152,7 @@ pub struct Settings {
     pub speed_max: f64,
     pub spread: f64,
     pub fade: f64,
+    pub size: f64,
     pub colors: Vec<[f32; 3]>,
     pub sound: Option<String>,
 }
@@ -223,6 +237,7 @@ speed_min = 900
 speed_max = 2500
 spread = 150
 fade = 0.4
+# size = 1.0    # particle size multiplier
 colors = ["#ff2d87", "#2d8cff", "#2dff6d", "#ffd02d", "#a12dff", "#ff6b2d", "#2dfff6", "#ff2dca"]
 
 # Play a sound with every run: "auto" (the type's own), a built-in name, or a
@@ -309,11 +324,58 @@ pub fn load_file_config() -> FileConfig {
         .unwrap_or_default()
 }
 
+// ── --info ───────────────────────────────────────────────────────
+
+/// Dump the settings this run would use, and which layer each value came from.
+/// The priority chain is four deep (cli > profile > config > type default), so
+/// "what is it actually doing, and why" is otherwise guesswork -- including the
+/// question of whether the config file is being read at all.
+pub fn print_info() {
+    let s = settings();
+    let from = |key: &str| {
+        s.sources.iter().find(|(n, _)| *n == key).map(|(_, v)| *v).unwrap_or("default")
+    };
+    let row = |name: &str, value: String, key: &str| {
+        println!("  {name:<10} {value:<22} {}", from(key));
+    };
+
+    println!("confet {}", env!("CARGO_PKG_VERSION"));
+    match config_path() {
+        Some(p) if p.exists() => println!("  config     {}", p.display()),
+        Some(p) => println!("  config     {} (not found)", p.display()),
+        None => println!("  config     (no config directory)"),
+    }
+    println!("  profile    {}", s.profile.as_deref().unwrap_or("-"));
+    println!();
+    row("type", s.anim_type.name().to_string(), "type");
+    row("shape", s.shape.name().to_string(), "shape");
+    row("particles", s.particles.to_string(), "particles");
+    row("duration", format!("{}s", s.duration), "duration");
+    row("gravity", s.gravity.to_string(), "gravity");
+    row("drag", s.drag.to_string(), "drag");
+    row("speed", format!("{} .. {}", s.speed_min, s.speed_max), "speed_min");
+    row("spread", s.spread.to_string(), "spread");
+    row("fade", format!("{}s", s.fade), "fade");
+    row("size", format!("{}x", s.size), "size");
+    row("sound", s.sound.clone().unwrap_or_else(|| "off".into()), "sound");
+    let hex: Vec<String> = s.colors.iter()
+        .map(|c| format!("#{:02x}{:02x}{:02x}",
+            (c[0] * 255.0).round() as u8,
+            (c[1] * 255.0).round() as u8,
+            (c[2] * 255.0).round() as u8))
+        .collect();
+    row("colors", format!("{} colors", hex.len()), "colors");
+    for chunk in hex.chunks(6) {
+        println!("             {}", chunk.join(" "));
+    }
+}
+
 // ── Settings resolution ──────────────────────────────────────────
 
 impl Settings {
     pub fn resolve(cli: Cli, file: FileConfig) -> Self {
         let builtins = builtin_profiles();
+        let mut sources: Vec<(&'static str, &'static str)> = Vec::new();
 
         let profile = if let Some(ref name) = cli.profile {
             if let Some(p) = file.profiles.get(name) {
@@ -338,6 +400,22 @@ impl Settings {
             ProfileConfig::default()
         };
 
+        sources.push(("type", if cli.anim_type.is_some() { "cli" }
+            else if profile.anim_type.is_some() { "profile" }
+            else if file.anim_type.is_some() { "config" }
+            else if cli.profile.as_deref().and_then(AnimType::from_str).is_some() { "cli" }
+            else { "default" }));
+        sources.push(("shape", if cli.shape.is_some() { "cli" }
+            else if profile.shape.is_some() { "profile" }
+            else if file.shape.is_some() { "config" } else { "default" }));
+        sources.push(("colors", if cli.colors.is_some() { "cli" }
+            else if profile.colors.is_some() { "profile" }
+            else if file.colors.is_some() { "config" } else { "default" }));
+        sources.push(("sound", if cli.mute { "cli" }
+            else if cli.sound.is_some() { "cli" }
+            else if profile.sound.is_some() { "profile" }
+            else if file.sound.is_some() { "config" } else { "default" }));
+
         let anim_type = cli.anim_type.as_deref()
             .and_then(AnimType::from_str)
             .or_else(|| profile.anim_type.as_deref().and_then(AnimType::from_str))
@@ -354,9 +432,16 @@ impl Settings {
         let (dp, dd, dg, ddr, dsn, dsx, dsp, df) = anim_type.defaults();
 
         macro_rules! pick {
-            ($cli:expr, $prof:expr, $file:expr, $default:expr) => {
-                $cli.unwrap_or_else(|| $prof.unwrap_or_else(|| $file.unwrap_or($default)))
-            };
+            ($name:literal, $cli:expr, $prof:expr, $file:expr, $default:expr) => {{
+                let (value, from) = match ($cli, $prof, $file) {
+                    (Some(v), _, _) => (v, "cli"),
+                    (_, Some(v), _) => (v, "profile"),
+                    (_, _, Some(v)) => (v, "config"),
+                    _ => ($default, "default"),
+                };
+                sources.push(($name, from));
+                value
+            }};
         }
 
         let colors = if let Some(ref c) = cli.colors {
@@ -385,17 +470,27 @@ impl Settings {
                 })
         };
 
+        // Picked before the struct literal: each one appends to `sources`, so
+        // they have to run before it is moved in.
+        let particles = pick!("particles", cli.particles, profile.particles, file.particles, dp);
+        let duration  = pick!("duration",  cli.duration,  profile.duration,  file.duration,  dd);
+        let gravity   = pick!("gravity",   cli.gravity,   profile.gravity,   file.gravity,   dg);
+        let drag      = pick!("drag",      cli.drag,      profile.drag,      file.drag,      ddr);
+        let speed_min = pick!("speed_min", cli.speed_min, profile.speed_min, file.speed_min, dsn);
+        let speed_max = pick!("speed_max", cli.speed_max, profile.speed_max, file.speed_max, dsx);
+        let spread    = pick!("spread",    cli.spread,    profile.spread,    file.spread,    dsp);
+        let fade      = pick!("fade",      cli.fade,      profile.fade,      file.fade,      df);
+        // A multiplier rather than absolute bounds: it scales each type's own
+        // size range, so rain keeps its 1:10 streak aspect and confetti keeps
+        // its spread of sizes. Clamped above zero -- the ranges are sampled
+        // with gen_range, which panics on an empty range.
+        let size      = pick!("size",      cli.size,      profile.size,      file.size,      1.0).max(0.01);
+
         Self {
+            profile: cli.profile.clone(), sources,
             anim_type, shape,
-            particles: pick!(cli.particles, profile.particles, file.particles, dp),
-            duration:  pick!(cli.duration,  profile.duration,  file.duration,  dd),
-            gravity:   pick!(cli.gravity,   profile.gravity,   file.gravity,   dg),
-            drag:      pick!(cli.drag,      profile.drag,      file.drag,      ddr),
-            speed_min: pick!(cli.speed_min, profile.speed_min, file.speed_min, dsn),
-            speed_max: pick!(cli.speed_max, profile.speed_max, file.speed_max, dsx),
-            spread:    pick!(cli.spread,    profile.spread,    file.spread,    dsp),
-            fade:      pick!(cli.fade,      profile.fade,      file.fade,      df),
-            colors, sound,
+            particles, duration, gravity, drag, speed_min, speed_max, spread, fade,
+            size, colors, sound,
         }
     }
 }

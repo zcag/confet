@@ -120,6 +120,8 @@ impl Particles {
             AnimType::Sparkle   => (2.0, 5.0, 2.0, 5.0),
             _                   => (5.0, 12.0, 3.0, 8.0),
         };
+        let z = s.size as f32;
+        let (pw_lo, pw_hi, ph_lo, ph_hi) = (pw_lo * z, pw_hi * z, ph_lo * z, ph_hi * z);
         let (rot_lo, rot_hi): (f64, f64) = match s.anim_type {
             AnimType::Rain | AnimType::Sparkle => (0.0, 0.0),
             AnimType::Snow => (-3.0, 3.0),

@@ -76,6 +76,8 @@ confet                    # default confetti
 confet snow               # built-in type
 confet lava               # built-in profile (no config needed)
 confet -t pop -n 500      # type with overrides
+confet --size 2           # chunkier particles
+confet --info gold        # what would 'gold' actually do?
 confet --init             # create config file
 ```
 
@@ -217,10 +219,12 @@ Config profiles override built-in profiles with the same name.
 | `--speed-max` | Max launch speed | varies by type |
 | `--spread` | Horizontal spread | varies by type |
 | `--fade` | Fade-out duration (secs) | varies by type |
+| `--size` | Particle size multiplier | 1 |
 | `-c, --colors` | Hex colors, comma-separated | varies by type |
 | `-w, --wait` | Block until the animation finishes | off |
 | `--sound [NAME\|PATH]` | Play a sound; bare = the type's own | off |
 | `--mute` | Force silence, overriding the config | — |
+| `--info` | Print the resolved settings and exit | — |
 | `--init` | Create default config file | — |
 
 ## License

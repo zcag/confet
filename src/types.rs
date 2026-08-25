@@ -71,6 +71,10 @@ impl AnimType {
         }
     }
 
+    pub fn name(self) -> &'static str {
+        ANIM_TYPE_NAMES[self as usize]
+    }
+
     /// The sound a bare `--sound` resolves to. Types with no burst moment
     /// (snow, rain, sparkle) want an ambient bed rather than a one-shot, and
     /// nothing bundled fits that yet, so they stay silent.
@@ -101,6 +105,10 @@ impl AnimType {
 }
 
 impl Shape {
+    pub fn name(self) -> &'static str {
+        match self { Self::Rect => "rect", Self::Circle => "circle", Self::Mixed => "mixed" }
+    }
+
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "rect" => Some(Self::Rect),

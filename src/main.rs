@@ -40,10 +40,19 @@ fn main() {
         config::init_config();
         return;
     }
-    if !cli.wait && respawn_in_background() {
+    // Resolve before any respawn: this is where bad input is reported, and the
+    // backgrounded child's stderr goes to /dev/null, so an error raised after
+    // the fork would vanish and confet would exit 0 having done nothing.
+    let (info, wait) = (cli.info, cli.wait);
+    config::set_settings(Settings::resolve(cli, file));
+
+    if info {
+        config::print_info();
         return;
     }
-    config::set_settings(Settings::resolve(cli, file));
+    if !wait && respawn_in_background() {
+        return;
+    }
 
     let app = gtk4::Application::builder()
         .application_id("dev.confetti.overlay")
