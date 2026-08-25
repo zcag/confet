@@ -311,28 +311,33 @@ impl Particles {
 }
 
 /// An isoceles triangle, apex up, 4x4 supersampled for smooth edges and stored
-/// premultiplied. Built once per run, one per colour.
+/// premultiplied. Built once per run, one per colour -- the coverage mask is
+/// shape, not colour, so it is rasterized once and tinted N times.
 fn triangle_textures(colors: &[[f32; 3]]) -> Vec<gdk::Texture> {
     const S: usize = 48;
+    let mut cov = vec![0.0f32; S * S];
+    for py in 0..S {
+        for px in 0..S {
+            let mut hits = 0;
+            for sy in 0..4 {
+                for sx in 0..4 {
+                    let u = (px as f32 + (sx as f32 + 0.5) / 4.0) / S as f32;
+                    let v = (py as f32 + (sy as f32 + 0.5) / 4.0) / S as f32;
+                    if (u - 0.5).abs() <= v * 0.5 { hits += 1; }
+                }
+            }
+            cov[py * S + px] = hits as f32 / 16.0;
+        }
+    }
+
     colors.iter().map(|c| {
         let mut buf = vec![0u8; S * S * 4];
-        for py in 0..S {
-            for px in 0..S {
-                let mut hits = 0;
-                for sy in 0..4 {
-                    for sx in 0..4 {
-                        let u = (px as f32 + (sx as f32 + 0.5) / 4.0) / S as f32;
-                        let v = (py as f32 + (sy as f32 + 0.5) / 4.0) / S as f32;
-                        if (u - 0.5).abs() <= v * 0.5 { hits += 1; }
-                    }
-                }
-                let a = hits as f32 / 16.0;
-                let i = (py * S + px) * 4;
-                buf[i]     = (c[0] * a * 255.0) as u8;
-                buf[i + 1] = (c[1] * a * 255.0) as u8;
-                buf[i + 2] = (c[2] * a * 255.0) as u8;
-                buf[i + 3] = (a * 255.0) as u8;
-            }
+        for (i, &a) in cov.iter().enumerate() {
+            let o = i * 4;
+            buf[o]     = (c[0] * a * 255.0) as u8;
+            buf[o + 1] = (c[1] * a * 255.0) as u8;
+            buf[o + 2] = (c[2] * a * 255.0) as u8;
+            buf[o + 3] = (a * 255.0) as u8;
         }
         gdk::MemoryTexture::new(
             S as i32, S as i32,
