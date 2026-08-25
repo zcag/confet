@@ -132,6 +132,11 @@ pub struct FileConfig {
     pub size: Option<f64>,
     pub colors: Option<Vec<String>>,
     pub sound: Option<String>,
+    /// [types.snow] etc -- settings for one animation type, so tuning the
+    /// default confetti doesn't also rewrite snow's physics the way a
+    /// top-level value does.
+    #[serde(default)]
+    pub types: HashMap<String, ProfileConfig>,
     #[serde(default)]
     pub profiles: HashMap<String, ProfileConfig>,
 }
@@ -226,19 +231,21 @@ fn builtin_profiles() -> HashMap<&'static str, ProfileConfig> {
 
 // ── Default config file ──────────────────────────────────────────
 
-const DEFAULT_CONFIG: &str = r##"# Default settings
+const DEFAULT_CONFIG: &str = r##"# Top-level settings apply to EVERY type and outrank each type's own defaults,
+# so setting duration here also shortens snow (8s) and sparkle (4s). Uncomment
+# only what you want everywhere; tune one animation in a profile instead.
 # type = "confetti"
 # shape = "rect"
-particles = 1500
-duration = 2.5
-gravity = 800
-drag = 0.98
-speed_min = 900
-speed_max = 2500
-spread = 150
-fade = 0.4
-# size = 1.0    # particle size multiplier
-colors = ["#ff2d87", "#2d8cff", "#2dff6d", "#ffd02d", "#a12dff", "#ff6b2d", "#2dfff6", "#ff2dca"]
+# particles = 1500
+# duration = 2.5
+# gravity = 800
+# drag = 0.98
+# speed_min = 900
+# speed_max = 2500
+# spread = 150
+# fade = 0.4
+# size = 1.0
+# colors = ["#ff2d87", "#2d8cff", "#2dff6d", "#ffd02d", "#a12dff", "#ff6b2d", "#2dfff6", "#ff2dca"]
 
 # Play a sound with every run: "auto" (the type's own), a built-in name, or a
 # path to a .wav. Omit it and confet stays silent unless you pass --sound.
@@ -247,6 +254,12 @@ colors = ["#ff2d87", "#2d8cff", "#2dff6d", "#ffd02d", "#a12dff", "#ff6b2d", "#2d
 # Available types: confetti, cannon, pop, fireworks, snow, rain, sparkle, drop
 # Available shapes: rect, circle, triangle, mixed
 # Run a profile: confet <name>
+#
+# Settings for one type only -- unlike the top-level values above, these leave
+# every other type's defaults alone:
+#
+# [types.confetti]
+# particles = 3000
 
 [profiles.lava]
 type = "pop"
@@ -289,8 +302,26 @@ colors = ["#ff2d87", "#2d8cff", "#2dff6d", "#ffd02d", "#a12dff", "#ff6b2d"]
 
 // ── File config ──────────────────────────────────────────────────
 
+/// Where the config lives. XDG on every platform: dirs::config_dir() returns
+/// ~/Library/Application Support on macOS, but CLI tools are configured from
+/// ~/.config there too, and that is where a dotfiles repo puts them.
 fn config_path() -> Option<std::path::PathBuf> {
-    dirs::config_dir().map(|d| d.join("confet").join("config.toml"))
+    let base = match std::env::var_os("XDG_CONFIG_HOME") {
+        Some(d) if !d.is_empty() => std::path::PathBuf::from(d),
+        _ => dirs::home_dir()?.join(".config"),
+    };
+    Some(base.join("confet").join("config.toml"))
+}
+
+/// The config actually in effect, falling back to the platform directory an
+/// older --init may have written to so those installs don't silently lose
+/// their settings.
+fn loaded_config_path() -> Option<std::path::PathBuf> {
+    if let Some(p) = config_path() {
+        if p.exists() { return Some(p) }
+    }
+    let legacy = dirs::config_dir()?.join("confet").join("config.toml");
+    legacy.exists().then_some(legacy)
 }
 
 pub fn init_config() {
@@ -316,8 +347,7 @@ pub fn init_config() {
 }
 
 pub fn load_file_config() -> FileConfig {
-    let Some(config_dir) = dirs::config_dir() else { return FileConfig::default() };
-    let path = config_dir.join("confet").join("config.toml");
+    let Some(path) = loaded_config_path() else { return FileConfig::default() };
     std::fs::read_to_string(path)
         .ok()
         .and_then(|s| toml::from_str(&s).ok())
@@ -340,10 +370,10 @@ pub fn print_info() {
     };
 
     println!("confet {}", env!("CARGO_PKG_VERSION"));
-    match config_path() {
-        Some(p) if p.exists() => println!("  config     {}", p.display()),
-        Some(p) => println!("  config     {} (not found)", p.display()),
-        None => println!("  config     (no config directory)"),
+    match (loaded_config_path(), config_path()) {
+        (Some(p), _) => println!("  config     {}", p.display()),
+        (None, Some(p)) => println!("  config     {} (not found)", p.display()),
+        (None, None) => println!("  config     (no config directory)"),
     }
     println!("  profile    {}", s.profile.as_deref().unwrap_or("-"));
     println!();
@@ -405,17 +435,6 @@ impl Settings {
             else if file.anim_type.is_some() { "config" }
             else if cli.profile.as_deref().and_then(AnimType::from_str).is_some() { "cli" }
             else { "default" }));
-        sources.push(("shape", if cli.shape.is_some() { "cli" }
-            else if profile.shape.is_some() { "profile" }
-            else if file.shape.is_some() { "config" } else { "default" }));
-        sources.push(("colors", if cli.colors.is_some() { "cli" }
-            else if profile.colors.is_some() { "profile" }
-            else if file.colors.is_some() { "config" } else { "default" }));
-        sources.push(("sound", if cli.mute { "cli" }
-            else if cli.sound.is_some() { "cli" }
-            else if profile.sound.is_some() { "profile" }
-            else if file.sound.is_some() { "config" } else { "default" }));
-
         let anim_type = cli.anim_type.as_deref()
             .and_then(AnimType::from_str)
             .or_else(|| profile.anim_type.as_deref().and_then(AnimType::from_str))
@@ -423,20 +442,38 @@ impl Settings {
             .or_else(|| cli.profile.as_deref().and_then(AnimType::from_str))
             .unwrap_or_default();
 
+        // Settings for the resolved type, sitting between the profile and the
+        // top-level values.
+        let tsec = file.types.get(anim_type.name()).cloned().unwrap_or_default();
+
+        let tsrc = |t: bool, f: bool| if t { "type" } else if f { "config" } else { "default" };
+        sources.push(("shape", if cli.shape.is_some() { "cli" }
+            else if profile.shape.is_some() { "profile" }
+            else { tsrc(tsec.shape.is_some(), file.shape.is_some()) }));
+        sources.push(("colors", if cli.colors.is_some() { "cli" }
+            else if profile.colors.is_some() { "profile" }
+            else { tsrc(tsec.colors.is_some(), file.colors.is_some()) }));
+        sources.push(("sound", if cli.mute || cli.sound.is_some() { "cli" }
+            else if profile.sound.is_some() { "profile" }
+            else { tsrc(tsec.sound.is_some(), file.sound.is_some()) }));
+
+
         let shape = cli.shape.as_deref()
             .and_then(Shape::from_str)
             .or_else(|| profile.shape.as_deref().and_then(Shape::from_str))
+            .or_else(|| tsec.shape.as_deref().and_then(Shape::from_str))
             .or_else(|| file.shape.as_deref().and_then(Shape::from_str))
             .unwrap_or_else(|| anim_type.default_shape());
 
         let (dp, dd, dg, ddr, dsn, dsx, dsp, df) = anim_type.defaults();
 
         macro_rules! pick {
-            ($name:literal, $cli:expr, $prof:expr, $file:expr, $default:expr) => {{
-                let (value, from) = match ($cli, $prof, $file) {
-                    (Some(v), _, _) => (v, "cli"),
-                    (_, Some(v), _) => (v, "profile"),
-                    (_, _, Some(v)) => (v, "config"),
+            ($name:literal, $cli:expr, $prof:expr, $type:expr, $file:expr, $default:expr) => {{
+                let (value, from) = match ($cli, $prof, $type, $file) {
+                    (Some(v), _, _, _) => (v, "cli"),
+                    (_, Some(v), _, _) => (v, "profile"),
+                    (_, _, Some(v), _) => (v, "type"),
+                    (_, _, _, Some(v)) => (v, "config"),
                     _ => ($default, "default"),
                 };
                 sources.push(($name, from));
@@ -447,6 +484,8 @@ impl Settings {
         let colors = if let Some(ref c) = cli.colors {
             parse_colors(c)
         } else if let Some(ref c) = profile.colors {
+            parse_colors(c)
+        } else if let Some(ref c) = tsec.colors {
             parse_colors(c)
         } else if let Some(ref c) = file.colors {
             parse_colors(c)
@@ -462,6 +501,7 @@ impl Settings {
         } else {
             cli.sound.clone()
                 .or_else(|| profile.sound.clone())
+                .or_else(|| tsec.sound.clone())
                 .or_else(|| file.sound.clone())
                 .and_then(|s| match s.as_str() {
                     "auto" => anim_type.default_sound().map(String::from),
@@ -472,19 +512,19 @@ impl Settings {
 
         // Picked before the struct literal: each one appends to `sources`, so
         // they have to run before it is moved in.
-        let particles = pick!("particles", cli.particles, profile.particles, file.particles, dp);
-        let duration  = pick!("duration",  cli.duration,  profile.duration,  file.duration,  dd);
-        let gravity   = pick!("gravity",   cli.gravity,   profile.gravity,   file.gravity,   dg);
-        let drag      = pick!("drag",      cli.drag,      profile.drag,      file.drag,      ddr);
-        let speed_min = pick!("speed_min", cli.speed_min, profile.speed_min, file.speed_min, dsn);
-        let speed_max = pick!("speed_max", cli.speed_max, profile.speed_max, file.speed_max, dsx);
-        let spread    = pick!("spread",    cli.spread,    profile.spread,    file.spread,    dsp);
-        let fade      = pick!("fade",      cli.fade,      profile.fade,      file.fade,      df);
+        let particles = pick!("particles", cli.particles, profile.particles, tsec.particles, file.particles, dp);
+        let duration  = pick!("duration",  cli.duration,  profile.duration, tsec.duration,  file.duration,  dd);
+        let gravity   = pick!("gravity",   cli.gravity,   profile.gravity, tsec.gravity,   file.gravity,   dg);
+        let drag      = pick!("drag",      cli.drag,      profile.drag, tsec.drag,      file.drag,      ddr);
+        let speed_min = pick!("speed_min", cli.speed_min, profile.speed_min, tsec.speed_min, file.speed_min, dsn);
+        let speed_max = pick!("speed_max", cli.speed_max, profile.speed_max, tsec.speed_max, file.speed_max, dsx);
+        let spread    = pick!("spread",    cli.spread,    profile.spread, tsec.spread,    file.spread,    dsp);
+        let fade      = pick!("fade",      cli.fade,      profile.fade, tsec.fade,      file.fade,      df);
         // A multiplier rather than absolute bounds: it scales each type's own
         // size range, so rain keeps its 1:10 streak aspect and confetti keeps
         // its spread of sizes. Clamped above zero -- the ranges are sampled
         // with gen_range, which panics on an empty range.
-        let size      = pick!("size",      cli.size,      profile.size,      file.size,      1.0).max(0.01);
+        let size      = pick!("size",      cli.size,      profile.size, tsec.size,      file.size,      1.0).max(0.01);
 
         Self {
             profile: cli.profile.clone(), sources,

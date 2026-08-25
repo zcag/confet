@@ -180,7 +180,9 @@ sound = "cork"
 
 ## Config
 
-Generate a default config with `confet --init` (creates `~/.config/confet/config.toml`):
+Generate a default config with `confet --init`. It is written to
+`$XDG_CONFIG_HOME/confet/config.toml`, defaulting to `~/.config/confet/config.toml`
+on Linux **and** macOS; `confet --info` prints the path actually in use.
 
 ```toml
 # Top-level settings override type defaults
@@ -200,7 +202,15 @@ duration = 8.0
 colors = ["#ffb7c5", "#ff69b4", "#ffc0cb", "#ffffff"]
 ```
 
-**Priority:** CLI flags > profile settings > top-level config > type defaults.
+Settings for a single animation type go in a `[types.<name>]` section — unlike
+top-level values, they leave every other type's defaults alone:
+
+```toml
+[types.confetti]
+particles = 3000        # a bigger default burst, without touching snow
+```
+
+**Priority:** CLI flags > profile > `[types.<name>]` > top-level config > type defaults.
 
 Config profiles override built-in profiles with the same name.
 
