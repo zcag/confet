@@ -210,7 +210,7 @@ Config profiles override built-in profiles with the same name.
 |------|-------------|---------|
 | `[PROFILE]` | Profile name or animation type | confetti |
 | `-t, --type` | Animation type | confetti |
-| `-s, --shape` | Particle shape (rect, circle, mixed) | varies by type |
+| `-s, --shape` | Particle shape (rect, circle, triangle, mixed) | varies by type |
 | `-n, --particles` | Number of particles | varies by type |
 | `-d, --duration` | Animation length (secs) | varies by type |
 | `-g, --gravity` | Gravity strength | varies by type |

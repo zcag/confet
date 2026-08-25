@@ -27,7 +27,7 @@ pub struct Cli {
     /// Animation type (confetti, cannon, pop, fireworks, snow, rain, sparkle, drop)
     #[arg(short = 't', long = "type")]
     pub anim_type: Option<String>,
-    /// Particle shape (rect, circle, mixed)
+    /// Particle shape (rect, circle, triangle, mixed)
     #[arg(short = 's', long)]
     pub shape: Option<String>,
     /// Number of particles
@@ -245,7 +245,7 @@ colors = ["#ff2d87", "#2d8cff", "#2dff6d", "#ffd02d", "#a12dff", "#ff6b2d", "#2d
 # sound = "auto"
 
 # Available types: confetti, cannon, pop, fireworks, snow, rain, sparkle, drop
-# Available shapes: rect, circle, mixed
+# Available shapes: rect, circle, triangle, mixed
 # Run a profile: confet <name>
 
 [profiles.lava]

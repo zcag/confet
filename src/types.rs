@@ -16,6 +16,8 @@ pub enum Shape {
     #[default]
     Rect,
     Circle,
+    Triangle,
+    /// Not a shape -- resolved to one of the three above per particle.
     Mixed,
 }
 
@@ -65,9 +67,10 @@ impl AnimType {
     pub fn default_shape(self) -> Shape {
         match self {
             Self::Fireworks | Self::Snow | Self::Sparkle => Shape::Circle,
-            Self::Drop | Self::Pop => Shape::Mixed,
+            // Rain is streaks -- discs and triangles read wrong falling fast.
             Self::Rain => Shape::Rect,
-            _ => Shape::Rect,
+            // Everything else is thrown paper, which is not all rectangles.
+            _ => Shape::Mixed,
         }
     }
 
@@ -106,13 +109,19 @@ impl AnimType {
 
 impl Shape {
     pub fn name(self) -> &'static str {
-        match self { Self::Rect => "rect", Self::Circle => "circle", Self::Mixed => "mixed" }
+        match self {
+            Self::Rect => "rect",
+            Self::Circle => "circle",
+            Self::Triangle => "triangle",
+            Self::Mixed => "mixed",
+        }
     }
 
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "rect" => Some(Self::Rect),
             "circle" => Some(Self::Circle),
+            "triangle" => Some(Self::Triangle),
             "mixed" => Some(Self::Mixed),
             _ => None,
         }

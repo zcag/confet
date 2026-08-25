@@ -1,7 +1,7 @@
 use crate::config::settings;
 use crate::types::{AnimType, Shape};
 use gtk4::prelude::*;
-use gtk4::{gdk, gsk};
+use gtk4::{gdk, glib, gsk};
 use rand::Rng;
 
 fn randn(rng: &mut impl Rng, mean: f64, std: f64) -> f64 {
@@ -16,7 +16,12 @@ pub struct Particles {
     pw: Vec<f32>, ph: Vec<f32>,
     rot: Vec<f64>, rot_speed: Vec<f64>,
     wobble: Vec<f64>, wobble_speed: Vec<f64>,
-    is_circle: Vec<bool>,
+    kind: Vec<Shape>,
+    /// One antialiased triangle per colour. GSK has no polygon primitive
+    /// before GTK 4.14's Path API, and append_cairo silently blanks the whole
+    /// frame on macOS -- a texture per colour draws in one node per particle,
+    /// on the GPU, on every GTK 4 version.
+    tri_tex: Vec<gdk::Texture>,
 }
 
 impl Particles {
@@ -134,10 +139,15 @@ impl Particles {
             _ => 0.3,
         };
 
-        let is_circle: Vec<bool> = match s.shape {
-            Shape::Rect => vec![false; n],
-            Shape::Circle => vec![true; n],
-            Shape::Mixed => (0..n).map(|_| r.gen_bool(0.5)).collect(),
+        // Mixed is roughly half strips, the rest split between discs and
+        // triangles -- thrown paper is not all one shape.
+        let kind: Vec<Shape> = match s.shape {
+            Shape::Mixed => (0..n).map(|_| match r.gen_range(0..4) {
+                0 => Shape::Circle,
+                1 => Shape::Triangle,
+                _ => Shape::Rect,
+            }).collect(),
+            fixed => vec![fixed; n],
         };
 
         Self {
@@ -150,7 +160,12 @@ impl Particles {
             rot_speed: (0..n).map(|_| if rot_lo == rot_hi { rot_lo } else { r.gen_range(rot_lo..rot_hi) }).collect(),
             wobble: (0..n).map(|_| r.gen_range(0.0..tau)).collect(),
             wobble_speed: (0..n).map(|_| r.gen_range(3.0..8.0)).collect(),
-            is_circle,
+            tri_tex: if kind.contains(&Shape::Triangle) {
+                triangle_textures(&s.colors)
+            } else {
+                Vec::new()
+            },
+            kind,
         }
     }
 
@@ -188,6 +203,13 @@ impl Particles {
         let n = s.particles;
         let tf = t as f32;
 
+        // GSK has no polygon primitive before GTK 4.14's Path API, and
+        // requiring that would drop every distro still on GTK 4.6-4.8. So
+        // triangles are collected here and filled in a single cairo node at
+        // the end -- one extra node per frame rather than one per particle.
+        // (x, y, rotation, half width, half height, rgb, alpha)
+        let mut tris: Vec<(f64, f64, f64, f64, f64, usize, f32)> = Vec::new();
+
         if s.anim_type == AnimType::Sparkle {
             for i in 0..n {
                 if tf < self.delay[i] { continue; }
@@ -195,13 +217,18 @@ impl Particles {
                 let pa = alpha * phase;
                 if pa < 0.01 { continue; }
                 let c = &s.colors[self.color[i] as usize];
-                let rgba = gdk::RGBA::new(c[0], c[1], c[2], pa);
                 let sz = self.pw[i];
                 let half = sz / 2.0;
+                if self.kind[i] == Shape::Triangle {
+                    tris.push((self.x[i], self.y[i], 0.0,
+                               half as f64, half as f64, self.color[i] as usize, pa));
+                    continue;
+                }
+                let rgba = gdk::RGBA::new(c[0], c[1], c[2], pa);
                 let rect = graphene::Rect::new(-half, -half, sz, sz);
                 snap.save();
                 snap.translate(&graphene::Point::new(self.x[i] as f32, self.y[i] as f32));
-                if self.is_circle[i] {
+                if self.kind[i] == Shape::Circle {
                     let corner = graphene::Size::new(half, half);
                     snap.push_rounded_clip(&gsk::RoundedRect::new(rect, corner, corner, corner, corner));
                     snap.append_color(&rgba, &rect);
@@ -211,6 +238,7 @@ impl Particles {
                 }
                 snap.restore();
             }
+            self.fill_triangles(snap, &tris);
             return;
         }
 
@@ -220,11 +248,26 @@ impl Particles {
         let use_wobble = !matches!(s.anim_type, AnimType::Rain);
         for i in 0..n {
             if tf < self.delay[i] { continue; }
+            // The wobble squash is what makes a particle look like paper
+            // turning edge-on, so triangles get it too.
+            let sw = if use_wobble && self.kind[i] != Shape::Circle {
+                self.wobble[i].sin().abs().max(0.15) as f32 * self.pw[i]
+            } else {
+                self.pw[i]
+            };
+            if self.kind[i] == Shape::Triangle {
+                tris.push((
+                    self.x[i], self.y[i], self.rot[i],
+                    (sw / 2.0) as f64, (self.ph[i] / 2.0) as f64,
+                    self.color[i] as usize, alpha,
+                ));
+                continue;
+            }
             let color = &rgba[self.color[i] as usize];
             snap.save();
             snap.translate(&graphene::Point::new(self.x[i] as f32, self.y[i] as f32));
             snap.rotate(self.rot[i].to_degrees() as f32);
-            if self.is_circle[i] {
+            if self.kind[i] == Shape::Circle {
                 let sz = (self.pw[i] + self.ph[i]) / 2.0;
                 let half = sz / 2.0;
                 let rect = graphene::Rect::new(-half, -half, sz, sz);
@@ -233,15 +276,59 @@ impl Particles {
                 snap.append_color(color, &rect);
                 snap.pop();
             } else {
-                let sw = if use_wobble {
-                    self.wobble[i].sin().abs().max(0.15) as f32 * self.pw[i]
-                } else {
-                    self.pw[i]
-                };
-                let sh = self.ph[i];
-                snap.append_color(color, &graphene::Rect::new(-sw / 2.0, -sh / 2.0, sw, sh));
+                snap.append_color(color, &graphene::Rect::new(-sw / 2.0, -self.ph[i] / 2.0, sw, self.ph[i]));
             }
             snap.restore();
         }
+
+        self.fill_triangles(snap, &tris);
     }
+
+    fn fill_triangles(&self, snap: &gtk4::Snapshot,
+                      tris: &[(f64, f64, f64, f64, f64, usize, f32)]) {
+        for &(x, y, rot, hw, hh, ci, a) in tris {
+            snap.save();
+            snap.translate(&graphene::Point::new(x as f32, y as f32));
+            snap.rotate(rot.to_degrees() as f32);
+            snap.push_opacity(a as f64);
+            snap.append_texture(
+                &self.tri_tex[ci],
+                &graphene::Rect::new(-hw as f32, -hh as f32, (hw * 2.0) as f32, (hh * 2.0) as f32),
+            );
+            snap.pop();
+            snap.restore();
+        }
+    }
+}
+
+/// An isoceles triangle, apex up, 4x4 supersampled for smooth edges and stored
+/// premultiplied. Built once per run, one per colour.
+fn triangle_textures(colors: &[[f32; 3]]) -> Vec<gdk::Texture> {
+    const S: usize = 48;
+    colors.iter().map(|c| {
+        let mut buf = vec![0u8; S * S * 4];
+        for py in 0..S {
+            for px in 0..S {
+                let mut hits = 0;
+                for sy in 0..4 {
+                    for sx in 0..4 {
+                        let u = (px as f32 + (sx as f32 + 0.5) / 4.0) / S as f32;
+                        let v = (py as f32 + (sy as f32 + 0.5) / 4.0) / S as f32;
+                        if (u - 0.5).abs() <= v * 0.5 { hits += 1; }
+                    }
+                }
+                let a = hits as f32 / 16.0;
+                let i = (py * S + px) * 4;
+                buf[i]     = (c[0] * a * 255.0) as u8;
+                buf[i + 1] = (c[1] * a * 255.0) as u8;
+                buf[i + 2] = (c[2] * a * 255.0) as u8;
+                buf[i + 3] = (a * 255.0) as u8;
+            }
+        }
+        gdk::MemoryTexture::new(
+            S as i32, S as i32,
+            gdk::MemoryFormat::R8g8b8a8Premultiplied,
+            &glib::Bytes::from_owned(buf), S * 4,
+        ).upcast()
+    }).collect()
 }
