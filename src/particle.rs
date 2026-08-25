@@ -22,6 +22,7 @@ pub struct Particles {
     /// frame on macOS -- a texture per colour draws in one node per particle,
     /// on the GPU, on every GTK 4 version.
     tri_tex: Vec<gdk::Texture>,
+    w: f64, h: f64,
 }
 
 impl Particles {
@@ -165,7 +166,7 @@ impl Particles {
             } else {
                 Vec::new()
             },
-            kind,
+            kind, w, h,
         }
     }
 
@@ -238,7 +239,7 @@ impl Particles {
                 }
                 snap.restore();
             }
-            self.fill_triangles(snap, &tris);
+            self.fill_triangles(snap, &tris, None);
             return;
         }
 
@@ -252,8 +253,13 @@ impl Particles {
         // so their discs stay round.
         let discs_tumble = matches!(s.anim_type,
             AnimType::Confetti | AnimType::Cannon | AnimType::Pop | AnimType::Drop);
+        // Cheap per-frame visibility test, not a retirement: a particle thrown
+        // above the top is skipped while it is up there and drawn again on the
+        // way back down. Most of a big burst is off-screen most of the time.
+        let (mx, my) = (self.w + 60.0, self.h + 60.0);
         for i in 0..n {
             if tf < self.delay[i] { continue; }
+            if self.x[i] < -60.0 || self.x[i] > mx || self.y[i] < -60.0 || self.y[i] > my { continue; }
             // The wobble squash is what makes a particle look like paper
             // turning edge-on, so triangles and discs get it too.
             let wob = if use_wobble && (self.kind[i] != Shape::Circle || discs_tumble) {
@@ -290,23 +296,28 @@ impl Particles {
             snap.restore();
         }
 
-        self.fill_triangles(snap, &tris);
+        self.fill_triangles(snap, &tris, Some(alpha));
     }
 
+    /// One opacity node around the whole batch rather than one per particle:
+    /// alpha only varies per particle in sparkle mode, which pushes its own.
     fn fill_triangles(&self, snap: &gtk4::Snapshot,
-                      tris: &[(f64, f64, f64, f64, f64, usize, f32)]) {
+                      tris: &[(f64, f64, f64, f64, f64, usize, f32)], batch_alpha: Option<f32>) {
+        if tris.is_empty() { return }
+        if let Some(a) = batch_alpha { snap.push_opacity(a as f64); }
         for &(x, y, rot, hw, hh, ci, a) in tris {
+            if batch_alpha.is_none() { snap.push_opacity(a as f64); }
             snap.save();
             snap.translate(&graphene::Point::new(x as f32, y as f32));
             snap.rotate(rot.to_degrees() as f32);
-            snap.push_opacity(a as f64);
             snap.append_texture(
                 &self.tri_tex[ci],
                 &graphene::Rect::new(-hw as f32, -hh as f32, (hw * 2.0) as f32, (hh * 2.0) as f32),
             );
-            snap.pop();
             snap.restore();
+            if batch_alpha.is_none() { snap.pop(); }
         }
+        if batch_alpha.is_some() { snap.pop(); }
     }
 }
 
