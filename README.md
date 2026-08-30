@@ -222,13 +222,13 @@ Config profiles override built-in profiles with the same name.
 | `-t, --type` | Animation type | confetti |
 | `-s, --shape` | Particle shape (rect, circle, triangle, mixed) | varies by type |
 | `-n, --particles` | Number of particles | varies by type |
-| `-d, --duration` | Animation length (secs) | varies by type |
+| `-d, --duration` | Animation length (secs); `0` = until every particle is off screen (60s ceiling) | varies by type |
 | `-g, --gravity` | Gravity strength | varies by type |
 | `--drag` | Air resistance (0-1) | varies by type |
 | `--speed-min` | Min launch speed | varies by type |
 | `--speed-max` | Max launch speed | varies by type |
 | `--spread` | Horizontal spread | varies by type |
-| `--fade` | Fade-out duration (secs) | varies by type |
+| `--fade` | Fade-out duration (secs); `0` = no fade | varies by type |
 | `--size` | Particle size multiplier | 1 |
 | `-c, --colors` | Hex colors, comma-separated | varies by type |
 | `-w, --wait` | Block until the animation finishes | off |

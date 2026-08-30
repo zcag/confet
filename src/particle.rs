@@ -203,6 +203,17 @@ impl Particles {
         }
     }
 
+    /// True while anything is still worth drawing. Gravity only ever carries
+    /// particles down, so one past the bottom edge is gone for good; the side
+    /// margins catch the ones flung out of frame. Particles still waiting on
+    /// their launch delay sit at the spawn point, which is on screen.
+    pub fn onscreen(&self) -> bool {
+        let m = 64.0;
+        (0..self.x.len()).any(|i| {
+            self.y[i] < self.h + m && self.x[i] > -m && self.x[i] < self.w + m
+        })
+    }
+
     pub fn draw(&self, snap: &gtk4::Snapshot, alpha: f32, t: f64) {
         let s = settings();
         let n = s.particles;

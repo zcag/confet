@@ -6,6 +6,9 @@ use gtk4::glib;
 use std::cell::RefCell;
 use std::time::Instant;
 
+/// Hard ceiling for `duration = 0` (run until off screen).
+const MAX_RUN: f64 = 60.0;
+
 mod imp {
     use super::*;
 
@@ -35,7 +38,9 @@ mod imp {
             let st = self.state.borrow();
             let Some(state) = st.as_ref() else { return };
             let t = state.t0.elapsed().as_secs_f64();
-            let alpha = if t > s.duration - s.fade {
+            let alpha = if s.duration <= 0.0 {
+                1.0
+            } else if t > s.duration - s.fade {
                 ((s.duration - t) / s.fade).clamp(0.0, 1.0) as f32
             } else {
                 1.0
@@ -65,7 +70,15 @@ impl Canvas {
             let Some(state) = st.as_mut() else { return glib::ControlFlow::Break };
             let now = Instant::now();
             let t = (now - state.t0).as_secs_f64();
-            if t > s.duration {
+            // duration = 0 runs until the last particle has left the screen,
+            // with a ceiling so a gravity-free type (sparkle) cannot hang
+            // forever waiting for particles that never move.
+            let over = if s.duration <= 0.0 {
+                t > MAX_RUN || !state.ps.onscreen()
+            } else {
+                t > s.duration
+            };
+            if over {
                 drop(st);
                 if let Some(app) = canvas.root()
                     .and_then(|r| r.downcast::<gtk4::Window>().ok())

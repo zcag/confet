@@ -33,7 +33,7 @@ pub struct Cli {
     /// Number of particles
     #[arg(short = 'n', long)]
     pub particles: Option<usize>,
-    /// Animation duration in seconds
+    /// Animation duration in seconds (0 = until every particle is off screen)
     #[arg(short, long)]
     pub duration: Option<f64>,
     /// Gravity strength
@@ -237,13 +237,13 @@ const DEFAULT_CONFIG: &str = r##"# Top-level settings apply to EVERY type and ou
 # type = "confetti"
 # shape = "rect"
 # particles = 1500
-# duration = 2.5
+# duration = 2.5     # 0 = run until every particle has left the screen
 # gravity = 800
 # drag = 0.98
 # speed_min = 900
 # speed_max = 2500
 # spread = 150
-# fade = 0.4
+# fade = 0.4        # 0 = no fade-out, particles stay solid to the end
 # size = 1.0
 # colors = ["#ff2d87", "#2d8cff", "#2dff6d", "#ffd02d", "#a12dff", "#ff6b2d", "#2dfff6", "#ff2dca"]
 
@@ -380,7 +380,9 @@ pub fn print_info() {
     row("type", s.anim_type.name().to_string(), "type");
     row("shape", s.shape.name().to_string(), "shape");
     row("particles", s.particles.to_string(), "particles");
-    row("duration", format!("{}s", s.duration), "duration");
+    row("duration",
+        if s.duration <= 0.0 { "until off screen".into() } else { format!("{}s", s.duration) },
+        "duration");
     row("gravity", s.gravity.to_string(), "gravity");
     row("drag", s.drag.to_string(), "drag");
     row("speed", format!("{} .. {}", s.speed_min, s.speed_max), "speed_min");
