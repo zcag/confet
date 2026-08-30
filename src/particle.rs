@@ -143,12 +143,13 @@ impl Particles {
             _ => 0.3,
         };
 
-        // Mixed is roughly half strips, the rest split between discs and
-        // triangles -- thrown paper is not all one shape.
+        // Mixed is mostly strips with a quarter triangles -- thrown paper is
+        // not all one shape, but discs are the odd one out, so they stay a
+        // sprinkling rather than a quarter of the throw.
         let kind: Vec<Shape> = match s.shape {
-            Shape::Mixed => (0..n).map(|_| match r.gen_range(0..4) {
+            Shape::Mixed => (0..n).map(|_| match r.gen_range(0..24) {
                 0 => Shape::Circle,
-                1 => Shape::Triangle,
+                1..=6 => Shape::Triangle,
                 _ => Shape::Rect,
             }).collect(),
             fixed => vec![fixed; n],
